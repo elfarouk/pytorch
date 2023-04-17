@@ -18,6 +18,11 @@
 namespace torch {
 namespace autograd {
 
+// For gradient buffer stealing we will adjust the use count of tensors
+// which are persisted by cudagraphs, just as we need to adjust reference
+// count of tensors with hooks.
+TORCH_API size_t adjusted_use_count(const at::Tensor& t);
+
 #define CHECK_RESULT(RESULT, VAR)                                          \
   if (!(RESULT.is_sparse() || VAR.is_sparse() || RESULT.is_sparse_csr() || \
         VAR.is_sparse_csr())) {                                            \
@@ -113,7 +118,7 @@ struct TORCH_API AccumulateGrad : public Node {
       if (!GradMode::is_enabled() && !new_grad.is_sparse() &&
           !new_grad.is_sparse_csr() &&
           !(variable.is_sparse_csr() && new_grad.layout() == at::kStrided) &&
-          new_grad.use_count() <= num_expected_refs &&
+          torch::autograd::adjusted_use_count(new_grad) <= num_expected_refs &&
           (new_grad.is_mkldnn() ||
            utils::obeys_layout_contract(new_grad, variable))) {
         // we aren't setting up for double-backward
@@ -130,9 +135,9 @@ struct TORCH_API AccumulateGrad : public Node {
           new_grad._values().is_contiguous() &&
           // Use count for indices and values should always be <=1 since the
           // SparseTensor should be the only one holding a reference to these.
-          new_grad._indices().use_count() <= 1 &&
-          new_grad._values().use_count() <= 1 &&
-          new_grad.use_count() <= num_expected_refs) {
+          torch::autograd::adjusted_use_count(new_grad._indices()) <= 1 &&
+          torch::autograd::adjusted_use_count(new_grad._values()) <= 1 &&
+          torch::autograd::adjusted_use_count(new_grad) <= num_expected_refs) {
         // Can't detach sparse tensor (since metadata changes are not allowed
         // after detach), so just create a new one for the grad which is a
         // shallow copy. We need a shallow copy so that modifying the original
