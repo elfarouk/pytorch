@@ -54,14 +54,12 @@ class QuantizationSpec:
 
 
 # In the absence of better name, just winging it with QuantizationConfig
-QuantizationConfig = NamedTuple(
-    "QuantizationConfig",
-    [
-        ("activation", QuantizationSpec),
-        ("weight", QuantizationSpec),
-        ("bias", QuantizationSpec),
-    ],
-)
+@dataclass(eq=True, frozen=True)
+class QuantizationConfig:
+    activation: QuantizationSpec
+    weight: QuantizationSpec
+    bias: QuantizationSpec
+    is_qat: bool = False
 
 OperatorPatternType = List[Callable]
 
