@@ -50,6 +50,8 @@ class LaunchConfig:
         role: User defined role of the worker (defaults to "trainer").
         max_restarts: The maximum amount of restarts that elastic agent will conduct
                     on workers before failure.
+        proc_bind: The number of sockets/NUMAs/packages to bind the processes to.
+                    0 (No binding) is default.
         monitor_interval: The interval in seconds that is used by the elastic_agent
                         as a period of monitoring workers.
         start_method: The method is used by the elastic agent to start the
@@ -79,6 +81,7 @@ class LaunchConfig:
     rdzv_configs: Dict[str, Any] = field(default_factory=dict)
     rdzv_timeout: int = -1
     max_restarts: int = 3
+    proc_bind:int = 0
     monitor_interval: float = 30
     start_method: str = "spawn"
     log_dir: Optional[str] = None
@@ -198,6 +201,7 @@ def launch_agent(
         "  rdzv_endpoint    : %(rdzv_endpoint)s\n"
         "  rdzv_configs     : %(rdzv_configs)s\n"
         "  max_restarts     : %(max_restarts)s\n"
+        "  max_proc_bind    : %(proc_bind)s\n"
         "  monitor_interval : %(monitor_interval)s\n"
         "  log_dir          : %(log_dir)s\n"
         "  metrics_cfg      : %(metrics_cfg)s\n",
@@ -211,6 +215,7 @@ def launch_agent(
             "rdzv_endpoint": config.rdzv_endpoint,
             "rdzv_configs": config.rdzv_configs,
             "max_restarts": config.max_restarts,
+            "proc_bind": config.proc_bind,
             "monitor_interval": config.monitor_interval,
             "log_dir": config.log_dir,
             "metrics_cfg": config.metrics_cfg
@@ -236,6 +241,7 @@ def launch_agent(
         args=tuple(args),
         rdzv_handler=rdzv_registry.get_rendezvous_handler(rdzv_parameters),
         max_restarts=config.max_restarts,
+        proc_bind=config.proc_bind,
         monitor_interval=config.monitor_interval,
         redirects=config.redirects,
         tee=config.tee,

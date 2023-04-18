@@ -590,6 +590,15 @@ def get_args_parser() -> ArgumentParser:
         "machine's FQDN.",
     )
 
+    parser.add_argument(
+        "--proc-bind",
+        "--proc_bind",
+        action=env,
+        type=int,
+        default=0,
+        help="Binding of processes to enhance performances.",
+    )
+
     #
     # Positional arguments.
     #
@@ -721,6 +730,7 @@ def config_from_args(args) -> Tuple[LaunchConfig, Union[Callable, str], List[str
         rdzv_backend=args.rdzv_backend,
         rdzv_configs=rdzv_configs,
         max_restarts=args.max_restarts,
+        proc_bind=args.proc_bind,
         monitor_interval=args.monitor_interval,
         start_method=args.start_method,
         redirects=Std.from_str(args.redirects),

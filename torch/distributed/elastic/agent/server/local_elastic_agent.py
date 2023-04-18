@@ -245,6 +245,7 @@ class LocalElasticAgent(SimpleElasticAgent):
                 "MASTER_PORT": str(master_port),
                 "TORCHELASTIC_RESTART_COUNT": str(restart_count),
                 "TORCHELASTIC_MAX_RESTARTS": str(spec.max_restarts),
+                "TORCHELASTIC_PROC_BIND": str(spec.proc_bind),
                 "TORCHELASTIC_RUN_ID": spec.rdzv_handler.get_run_id(),
                 "TORCHELASTIC_USE_AGENT_STORE": str(use_agent_store),
                 "NCCL_ASYNC_ERROR_HANDLING": os.getenv(
@@ -278,6 +279,33 @@ class LocalElasticAgent(SimpleElasticAgent):
             redirects=spec.redirects,
             tee=spec.tee,
         )
+
+        # Get the current affinity
+        print("Those are specs :", spec)
+        pids=self._pcontext.pids()
+        print(pids)
+        for pid in pids:
+            print(os.sched_getaffinity(pids[pid]))
+
+        # Detect the machine
+        avail_cores = os.sched_getaffinity(0)
+        num_procs = len(pids)
+        pivot = int(len(avail_cores) / num_procs)
+        masks = []
+        index_start = 0
+        index_stop = index_start + pivot
+
+        for i in range(num_procs):
+            mask = [*range(index_start, index_stop, 1)]
+            masks.append(mask)
+            index_start = index_start + pivot
+            index_stop = index_stop + pivot
+
+        # Set Affinity
+        for pid in pids:
+            print(masks[pid])
+            os.sched_setaffinity(pids[pid], masks[pid])
+
 
         return self._pcontext.pids()
 
