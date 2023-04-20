@@ -143,6 +143,39 @@ class LocalElasticAgent(SimpleElasticAgent):
         dir = tempfile.mkdtemp(prefix=f"{rdzv_run_id}_", dir=base_log_dir)
         log.info("log directory set to: %s", dir)
         return dir
+    
+    def _proc_bind(self, spec):
+        
+        print("Those are specs :", spec)
+        if (spec.proc_bind > 0): 
+            print("Binding Activated")
+        else:
+            return
+
+        # Get the current affinity
+        pids=self._pcontext.pids()
+        print(pids)
+        for pid in pids:
+            print(os.sched_getaffinity(pids[pid]))
+
+        # Detect the machine
+        avail_cores = os.sched_getaffinity(0)
+        num_procs = len(pids)
+        pivot = int(len(avail_cores) / num_procs)
+        masks = []
+        index_start = 0
+        index_stop = index_start + pivot
+
+        for i in range(num_procs):
+            mask = [*range(index_start, index_stop, 1)]
+            masks.append(mask)
+            index_start = index_start + pivot
+            index_stop = index_stop + pivot
+
+        # Set Affinity
+        for pid in pids:
+            os.sched_setaffinity(pids[pid], masks[pid])
+
 
     def _setup_local_watchdog(self, envs: Dict[int, Dict[str, str]]) -> None:
         enable_watchdog_env_name = TORCHELASTIC_ENABLE_FILE_TIMER
@@ -280,32 +313,7 @@ class LocalElasticAgent(SimpleElasticAgent):
             tee=spec.tee,
         )
 
-        # Get the current affinity
-        print("Those are specs :", spec)
-        pids=self._pcontext.pids()
-        print(pids)
-        for pid in pids:
-            print(os.sched_getaffinity(pids[pid]))
-
-        # Detect the machine
-        avail_cores = os.sched_getaffinity(0)
-        num_procs = len(pids)
-        pivot = int(len(avail_cores) / num_procs)
-        masks = []
-        index_start = 0
-        index_stop = index_start + pivot
-
-        for i in range(num_procs):
-            mask = [*range(index_start, index_stop, 1)]
-            masks.append(mask)
-            index_start = index_start + pivot
-            index_stop = index_stop + pivot
-
-        # Set Affinity
-        for pid in pids:
-            print(masks[pid])
-            os.sched_setaffinity(pids[pid], masks[pid])
-
+        self._proc_bind(self, spec=spec)
 
         return self._pcontext.pids()
 
