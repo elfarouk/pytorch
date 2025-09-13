@@ -356,6 +356,38 @@ class LocalElasticAgent(SimpleElasticAgent):
             numa_options=spec.numa_options,
         )
 
+# Add Farouk (WIP)
+
+        # Check the pids of local workers & print affinity mask
+        print(spec)
+        pids=self._pcontext.pids()
+        print(pids)
+        for pid in pids:
+            print(os.sched_getaffinity(pids[pid]))
+
+        # Detect the machine and construct affinity masks (to be enhanced)
+        avail_cores = os.sched_getaffinity(0)
+        num_procs = len(pids)
+        pivot = int(len(avail_cores) / num_procs)
+        masks = []
+        index_start = 0
+        index_stop = index_start + pivot
+
+        for i in range(num_procs):
+            mask = [*range(index_start, index_stop, 1)]
+            masks.append(mask)
+            index_start = index_start + pivot
+            index_stop = index_stop + pivot
+        
+        print(masks)
+        
+        # Set the Affinity mask
+        for pid in pids:
+            print(masks[pid])
+            os.sched_setaffinity(pids[pid], masks[pid])
+
+# Add Farouk end (WIP)
+
         return self._pcontext.pids()
 
     def _shutdown(self, death_sig: signal.Signals = signal.SIGTERM) -> None:
